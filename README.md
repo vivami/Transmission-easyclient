@@ -1,16 +1,9 @@
 # Transmission easy client
 
-A Firefox & Chrome browser extension to monitor and control a remote
-[Transmission](https://transmissionbt.com/) BitTorrent daemon from the toolbar:
-list torrents, add them by right-clicking a link, manage speed limits, watch
-free space, and get download-complete notifications.
-
-## About this fork
-
 This is a fork of [Feverqwe/Transmission-easyclient](https://github.com/Feverqwe/Transmission-easyclient)
 (original author: Anton). The original was built on an end-of-life toolchain
-and Manifest V2. This fork **modernizes the project and hardens its security
-while keeping the behavior the same** — it is not a redesign.
+and Manifest V2. This fork modernizes the project and hardens its security
+while keeping the behavior the same.
 
 ## What changed in this fork
 
@@ -22,11 +15,9 @@ while keeping the behavior the same** — it is not a redesign.
   Opera target dropped — now **Firefox + Chrome**.
 - **Runtime libraries:** React 16 → 18, MobX 5 → 6, mobx-state-tree 3 → 6,
   `d3` slimmed to granular packages, `whatwg-fetch` dropped for native `fetch`.
-- **Security:** `npm audit` went from **89 vulnerabilities → 0**; a strict MV3
+- **Security:** `npm audit` removed 89 vulnerabilities → 0; a strict MV3
   Content-Security-Policy (`script-src 'self'`); credentials are no longer
   embedded in the Web-UI link.
-
-The full step-by-step migration is in the commit history.
 
 ## Build from source
 
@@ -59,10 +50,3 @@ then install the `.xpi` via `about:addons` → ⚙️ → **Install Add-on From 
 > The Firefox add-on ID lives in `webpack.config.js`
 > (`browser_specific_settings.gecko.id`). Change it if you sign under your own
 > AMO account.
-
-## Credits & license
-
-Original work and design by Anton ([Feverqwe](https://github.com/Feverqwe)).
-The upstream project ships without an explicit license; this fork preserves
-that and exists for personal/educational use. Please refer to the upstream
-repository for any licensing questions.
