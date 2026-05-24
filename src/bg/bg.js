@@ -1,18 +1,22 @@
+import "../tools/configureMobx";
 import getLogger from "../tools/getLogger";
-import Daemon from "./daemon";
+import Daemon, {ALARM_NAME} from "./daemon";
 import ContextMenu from "./contextMenu";
 import BgStore from "../stores/BgStore";
 import {autorun} from "mobx";
 import TransmissionClient from "./transmissionClient";
 import MobxPatchLine from "../tools/mobxPatchLine";
+import completeIcon from "../assets/img/notification_done.png?resource";
+import addIcon from "../assets/img/notification_add.png?resource";
+import errorIcon from "../assets/img/notification_error.png?resource";
+import {serializeError} from "serialize-error";
 
-const {serializeError} = require('serialize-error');
 const logger = getLogger('background');
 
 const notificationIcons = {
-  complete: require('!file-loader!../assets/img/notification_done.png').default,
-  add: require('!file-loader!../assets/img/notification_add.png').default,
-  error: require('!file-loader!../assets/img/notification_error.png').default,
+  complete: completeIcon,
+  add: addIcon,
+  error: errorIcon,
 };
 
 class Bg {
@@ -32,7 +36,6 @@ class Bg {
   }
 
   init() {
-    chrome.runtime.onMessage.addListener(this.handleMessage);
     this.daemon = new Daemon(this);
     this.contextMenu = new ContextMenu(this);
 
@@ -105,162 +108,80 @@ class Bg {
   }
 
   handleMessage = (message, sender, response) => {
-    let promise = null;
-
-    switch (message && message.action) {
-      case 'getBgStoreDelta': {
-        promise = this.whenReady().then(() => {
+    // Every action is dispatched after whenReady() so the store/client are
+    // reconstructed first — on MV3 the service worker may be cold when a
+    // message arrives.
+    const promise = this.whenReady().then(() => {
+      switch (message && message.action) {
+        case 'getBgStoreDelta':
           return this.bgStorePathLine.getDelta(message.id, message.patchId);
-        });
-        break;
-      }
-      case 'getConfigStore': {
-        promise = this.whenReady().then(() => {
+        case 'getConfigStore':
           return this.bgStore.config.toJSON();
-        });
-        break;
-      }
-      case 'updateTorrentList': {
-        promise = this.whenReady().then(() => {
+        case 'updateTorrentList':
           return this.client.updateTorrents(message.force);
-        });
-        break;
-      }
-      case 'start': {
-        promise = this.client.start(message.ids);
-        break;
-      }
-      case 'forcestart': {
-        promise = this.client.forcestart(message.ids);
-        break;
-      }
-      case 'stop': {
-        promise = this.client.stop(message.ids);
-        break;
-      }
-      case 'recheck': {
-        promise = this.client.recheck(message.ids);
-        break;
-      }
-      case 'removetorrent': {
-        promise = this.client.removetorrent(message.ids);
-        break;
-      }
-      case 'removedatatorrent': {
-        promise = this.client.removedatatorrent(message.ids);
-        break;
-      }
-      case 'queueTop': {
-        promise = this.client.queueTop(message.ids);
-        break;
-      }
-      case 'queueUp': {
-        promise = this.client.queueUp(message.ids);
-        break;
-      }
-      case 'queueDown': {
-        promise = this.client.queueDown(message.ids);
-        break;
-      }
-      case 'queueBottom': {
-        promise = this.client.queueBottom(message.ids);
-        break;
-      }
-      case 'setPriority': {
-        promise = this.client.setPriority(message.id, message.level, message.fileIdxs);
-        break;
-      }
-      case 'getFileList': {
-        promise = this.client.getFileList(message.id);
-        break;
-      }
-      case 'setDownloadSpeedLimitEnabled': {
-        promise = this.whenReady().then(() => {
+        case 'start':
+          return this.client.start(message.ids);
+        case 'forcestart':
+          return this.client.forcestart(message.ids);
+        case 'stop':
+          return this.client.stop(message.ids);
+        case 'recheck':
+          return this.client.recheck(message.ids);
+        case 'removetorrent':
+          return this.client.removetorrent(message.ids);
+        case 'removedatatorrent':
+          return this.client.removedatatorrent(message.ids);
+        case 'queueTop':
+          return this.client.queueTop(message.ids);
+        case 'queueUp':
+          return this.client.queueUp(message.ids);
+        case 'queueDown':
+          return this.client.queueDown(message.ids);
+        case 'queueBottom':
+          return this.client.queueBottom(message.ids);
+        case 'setPriority':
+          return this.client.setPriority(message.id, message.level, message.fileIdxs);
+        case 'getFileList':
+          return this.client.getFileList(message.id);
+        case 'setDownloadSpeedLimitEnabled':
           return this.client.setDownloadSpeedLimitEnabled(message.enabled);
-        });
-        break;
-      }
-      case 'setDownloadSpeedLimit': {
-        promise = this.whenReady().then(() => {
+        case 'setDownloadSpeedLimit':
           return this.client.setDownloadSpeedLimit(message.speed);
-        });
-        break;
-      }
-      case 'setUploadSpeedLimitEnabled': {
-        promise = this.whenReady().then(() => {
+        case 'setUploadSpeedLimitEnabled':
           return this.client.setUploadSpeedLimitEnabled(message.enabled);
-        });
-        break;
-      }
-      case 'setUploadSpeedLimit': {
-        promise = this.whenReady().then(() => {
+        case 'setUploadSpeedLimit':
           return this.client.setUploadSpeedLimit(message.speed);
-        });
-        break;
-      }
-      case 'setAltSpeedEnabled': {
-        promise = this.whenReady().then(() => {
+        case 'setAltSpeedEnabled':
           return this.client.setAltSpeedEnabled(message.enabled);
-        });
-        break;
-      }
-      case 'setAltUploadSpeedLimit': {
-        promise = this.whenReady().then(() => {
+        case 'setAltUploadSpeedLimit':
           return this.client.setAltUploadSpeedLimit(message.speed);
-        });
-        break;
-      }
-      case 'setAltDownloadSpeedLimit': {
-        promise = this.whenReady().then(() => {
+        case 'setAltDownloadSpeedLimit':
           return this.client.setAltDownloadSpeedLimit(message.speed);
-        });
-        break;
-      }
-      case 'updateSettings': {
-        promise = this.whenReady().then(() => {
+        case 'updateSettings':
           return this.client.updateSettings();
-        });
-        break;
-      }
-      case 'sendFiles': {
-        promise = this.whenReady().then(() => {
+        case 'sendFiles':
           return this.client.sendFiles(message.urls, message.directory);
-        });
-        break;
-      }
-      case 'getFreeSpace': {
-        promise = this.whenReady().then(() => {
+        case 'getFreeSpace':
           return this.client.getFreeSpace(message.path);
-        });
-        break;
+        case 'reannounce':
+          return this.client.reannounce(message.ids);
+        case 'rename':
+          return this.client.rename(message.ids, message.path, message.name);
+        case 'torrentSetLocation':
+          return this.client.torrentSetLocation(message.ids, message.location);
+        default:
+          throw new Error('Unknown request');
       }
-      case 'reannounce': {
-        promise = this.client.reannounce(message.ids);
-        break;
-      }
-      case 'rename': {
-        promise = this.client.rename(message.ids, message.path, message.name);
-        break;
-      }
-      case 'torrentSetLocation': {
-        promise = this.client.torrentSetLocation(message.ids, message.location);
-        break;
-      }
-      default: {
-        promise = Promise.reject(new Error('Unknown request'));
-      }
-    }
+    });
 
-    if (promise) {
-      promise.then((result) => {
-        response({result});
-      }, (err) => {
-        response({error: serializeError(err)});
-      }).catch((err) => {
-        logger.error('Send response error', err);
-      });
-      return true;
-    }
+    promise.then((result) => {
+      response({result});
+    }, (err) => {
+      response({error: serializeError(err)});
+    }).catch((err) => {
+      logger.error('Send response error', err);
+    });
+    return true;
   };
 
   torrentAddedNotify(torrent) {
@@ -295,7 +216,7 @@ class Bg {
 }
 
 function setBadgeText(text) {
-  chrome.browserAction.setBadgeText({
+  chrome.action.setBadgeText({
     text: text
   });
 }
@@ -303,7 +224,9 @@ function setBadgeText(text) {
 function showNotification(id, iconUrl, title = '', message = '') {
   chrome.notifications.create(id, {
     type: 'basic',
-    iconUrl: iconUrl,
+    // Resolve to an absolute extension URL — the service worker has no document
+    // base to resolve a relative asset path against.
+    iconUrl: chrome.runtime.getURL(iconUrl),
     title: title,
     message: message
   });
@@ -314,11 +237,44 @@ function setBadgeBackgroundColor(color) {
   if (colors.length === 4) {
     colors.push(parseInt(255 * colors.pop(), 10));
   }
-  chrome.browserAction.setBadgeBackgroundColor({
+  chrome.action.setBadgeBackgroundColor({
     color: colors
   });
 }
 
-const bg = window.bg = new Bg();
+// Lazy singleton. The MV3 service worker is torn down when idle and the module
+// is re-evaluated on the next event, so the Bg instance (store, client, daemon,
+// context menu) is rebuilt on demand and its config is re-read from storage.
+let bgInstance = null;
+function getBg() {
+  if (!bgInstance) {
+    bgInstance = new Bg();
+  }
+  return bgInstance;
+}
 
-export default bg;
+// Event listeners MUST be registered synchronously at the top level on every
+// worker startup, otherwise the event that woke the worker is not delivered.
+chrome.runtime.onMessage.addListener((message, sender, response) => {
+  return getBg().handleMessage(message, sender, response);
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === ALARM_NAME) {
+    const bg = getBg();
+    bg.whenReady().then(() => bg.daemon.handleFire());
+  }
+});
+
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  getBg().contextMenu.handleClick(info, tab);
+});
+
+// Build menus / start polling right after install or browser startup, without
+// waiting for the popup to open.
+chrome.runtime.onInstalled.addListener(() => {
+  getBg().whenReady().catch(() => {});
+});
+chrome.runtime.onStartup.addListener(() => {
+  getBg().whenReady().catch(() => {});
+});

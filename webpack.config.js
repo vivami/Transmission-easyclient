@@ -1,9 +1,8 @@
 require('./builder/defaultBuildEnv');
 const {DefinePlugin} = require('webpack');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
-const {CleanWebpackPlugin} = require('clean-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const OptimizeCssAssetsPlugin = require('optimize-css-assets-webpack-plugin');
+const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const path = require('path');
 
@@ -24,18 +23,24 @@ const config = {
     filename: '[name].js',
     chunkFilename: '[name].chunk.js',
     path: path.join(outputPath, 'src'),
+    // Explicit (was webpack 4's default). The webpack 5 'auto' default emits a
+    // runtime that reads document.currentScript, which throws in an MV3 service
+    // worker (no document). Assets resolve relative to the extension root.
+    publicPath: '',
+    clean: true,
   },
   mode: mode,
   devtool: devtool,
   optimization: {
+    minimizer: [
+      '...',
+      new CssMinimizerPlugin(),
+    ],
     splitChunks: {
       cacheGroups: {
-        commons: {
-          name: "commons",
-          chunks: chunk => ['bg', 'index', 'options'].includes(chunk.name),
-          minChunks: 3,
-          priority: 10,
-        },
+        // `bg` is intentionally excluded: an MV3 service worker is a single
+        // file, so the background entry must bundle all of its dependencies.
+        // Only the two UI pages share a common chunk.
         commons_ui: {
           name: "commons-ui",
           chunks: chunk => ['index', 'options'].includes(chunk.name),
@@ -77,12 +82,23 @@ const config = {
       },
       {
         test: /\.(gif|png|svg)$/,
-        use: [{
-          loader: 'url-loader',
-          options: {
-            limit: 8192
-          }
-        }]
+        oneOf: [
+          {
+            // Icons referenced from JS that must be real files (e.g. notification
+            // iconUrls); imported with a `?resource` query.
+            resourceQuery: /resource/,
+            type: 'asset/resource',
+          },
+          {
+            // Default: inline small images (matches the old url-loader limit).
+            type: 'asset',
+            parser: {
+              dataUrlCondition: {
+                maxSize: 8192
+              }
+            }
+          },
+        ]
       },
     ]
   },
@@ -90,38 +106,35 @@ const config = {
     extensions: ['.js', '.jsx'],
   },
   plugins: [
-    new CleanWebpackPlugin({
-      cleanStaleWebpackAssets: false,
-      cleanOnceBeforeBuildPatterns: [
-        outputPath,
+    new CopyWebpackPlugin({
+      patterns: [
+        {
+          from: './src/manifest.json',
+          transform(content) {
+            const manifest = JSON.parse(content);
+            if (browser === 'firefox') {
+              // Firefox MV3 uses a non-persistent event page (background.scripts),
+              // not a service worker.
+              manifest.background = {
+                scripts: ['bg.js']
+              };
+              manifest.browser_specific_settings = {
+                gecko: {
+                  // Required for MV3 on Firefox. Change this if you publish to
+                  // AMO under an existing add-on ID.
+                  id: 'transmission-easyclient@vincentvm',
+                  strict_min_version: '109.0'
+                }
+              };
+              delete manifest.minimum_chrome_version;
+            }
+            return JSON.stringify(manifest, null, 4);
+          }
+        },
+        {from: './src/assets/icons', to: './assets/icons'},
+        {from: './src/_locales', to: './_locales'},
       ]
     }),
-    new CopyWebpackPlugin([
-      {
-        from: './src/manifest.json',
-        transform: (content, path) => {
-          const manifest = JSON.parse(content);
-          if (browser === 'firefox') {
-            manifest.browser_specific_settings = {
-              gecko: {
-                strict_min_version: '48.0'
-              }
-            };
-
-            manifest.options_ui = {};
-            manifest.options_ui.page = manifest.options_page;
-            manifest.options_ui.open_in_tab = true;
-
-            delete manifest.options_page;
-
-            delete manifest.minimum_chrome_version;
-          }
-          return JSON.stringify(manifest, null, 4);
-        }
-      },
-      {from: './src/assets/icons', to: './assets/icons'},
-      {from: './src/_locales', to: './_locales'},
-    ]),
     new MiniCssExtractPlugin({
       filename: '[name].css',
       chunkFilename: '[name].chunk.css'
@@ -129,7 +142,7 @@ const config = {
     new HtmlWebpackPlugin({
       filename: 'index.html',
       template: './src/templates/index.html',
-      chunks: ['commons', 'commons-ui', 'index'],
+      chunks: ['commons-ui', 'index'],
       minify: {
         collapseWhitespace: true,
         removeComments: true,
@@ -142,7 +155,7 @@ const config = {
     new HtmlWebpackPlugin({
       filename: 'options.html',
       template: './src/templates/options.html',
-      chunks: ['commons', 'commons-ui', 'options'],
+      chunks: ['commons-ui', 'options'],
       minify: {
         collapseWhitespace: true,
         removeComments: true,
@@ -160,21 +173,5 @@ const config = {
     }),
   ]
 };
-
-if (mode === 'production') {
-  config.plugins.push(
-    new OptimizeCssAssetsPlugin({
-      assetNameRegExp: /\.css$/g,
-      cssProcessor: require('cssnano'),
-      cssProcessorPluginOptions: {
-        preset: [
-          'default',
-          {discardComments: {removeAll: true}}
-        ],
-      },
-      canPrint: true
-    }),
-  );
-}
 
 module.exports = config;

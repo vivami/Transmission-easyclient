@@ -4,8 +4,6 @@ import ListSelectStore from "./ListSelectStore";
 import FileStore from "./FileStore";
 import TorrentStore from "./TorrentStore";
 
-const qs = require('querystring');
-
 const logger = getLogger('FileListStore');
 
 const byColumnMap = {

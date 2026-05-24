@@ -1,7 +1,8 @@
+import "../tools/configureMobx";
 import "../assets/css/options.less";
 import React from "react";
 import RootStore from "../stores/RootStore";
-import ReactDOM from "react-dom";
+import {createRoot} from "react-dom/client";
 import {observer} from "mobx-react";
 import {HashRouter, NavLink, Redirect, Route, Switch, withRouter} from "react-router-dom";
 import PropTypes from "prop-types";
@@ -682,9 +683,8 @@ class NotFound extends React.PureComponent {
 
 const rootStore = window.rootStore = RootStore.create();
 
-ReactDOM.render(
+createRoot(document.getElementById('root')).render(
   <RootStoreCtx.Provider value={rootStore}>
     <Options/>
-  </RootStoreCtx.Provider>,
-  document.getElementById('root')
+  </RootStoreCtx.Provider>
 );

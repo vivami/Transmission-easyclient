@@ -3,13 +3,14 @@ import promiseFinally from "../tools/promiseFinally";
 
 const logger = getLogger('Daemon');
 
+const ALARM_NAME = 'daemon';
+
 class Daemon {
   constructor(/**Bg*/bg) {
     this.bg = bg;
 
     this.isActive = false;
     this.retryCount = 0;
-    this.intervalId = null;
     this.inProgress = false;
   }
 
@@ -40,14 +41,19 @@ class Daemon {
 
   start() {
     logger.info('Start');
-    this.stop(true);
 
-    if (this.bgStore.config.backgroundUpdateInterval >= 1000) {
+    const interval = this.bgStore.config.backgroundUpdateInterval;
+    if (interval >= 1000) {
       this.isActive = true;
       this.retryCount = 0;
-      this.intervalId = setInterval(() => {
-        this.handleFire();
-      }, this.bgStore.config.backgroundUpdateInterval);
+      // MV3 replaces setInterval (which dies with the idle service worker) with
+      // chrome.alarms. Creating an alarm with an existing name replaces it.
+      // Note: Chrome clamps the period to a ~30s floor, so sub-30s intervals
+      // configured in options are not honored on Chrome.
+      const periodInMinutes = Math.max(0.5, interval / 60000);
+      chrome.alarms.create(ALARM_NAME, {periodInMinutes});
+    } else {
+      this.stop(true);
     }
   }
 
@@ -56,7 +62,7 @@ class Daemon {
       logger.info('Stop');
     }
     this.isActive = false;
-    clearInterval(this.intervalId);
+    chrome.alarms.clear(ALARM_NAME);
   }
 
   destroy() {
@@ -65,4 +71,5 @@ class Daemon {
   }
 }
 
+export {ALARM_NAME};
 export default Daemon;

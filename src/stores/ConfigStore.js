@@ -1,8 +1,6 @@
 import {getPropertyMembers, resolveIdentifier, types} from "mobx-state-tree";
 import storageSet from "../tools/storageSet";
 
-const url = require('url');
-
 const defaultTorrentListColumnList = [
   {column: 'checkbox', display: 1, order: 0, width: 18, lang: 'selectAll'},
   {column: 'name', display: 1, order: 1, width: 204, lang: 'OV_COL_NAME'},
@@ -296,24 +294,18 @@ const ConfigStore = types.model('ConfigStore', {
 
   return {
     get url() {
-      return url.format({
-        protocol: self.ssl ? 'https' : 'http',
-        port: self.port,
-        hostname: self.hostname,
-        pathname: self.pathname,
-      });
+      const protocol = self.ssl ? 'https' : 'http';
+      const host = self.port ? `${self.hostname}:${self.port}` : self.hostname;
+      return `${protocol}://${host}${self.pathname || ''}`;
     },
     get webUiUrl() {
-      const urlObject = {
-        protocol: self.ssl ? 'https' : 'http',
-        port: self.port,
-        hostname: self.hostname,
-        pathname: self.webPathname,
-      };
-      if (self.authenticationRequired) {
-        urlObject.auth = [self.login, self.password].join(':');
-      }
-      return url.format(urlObject);
+      // Credentials are intentionally NOT embedded here. `user:pass@` in a
+      // navigable URL leaks into history/title and is stripped or blocked by
+      // modern browsers; the browser handles Basic auth (prompt or saved
+      // session) when the link is opened.
+      const protocol = self.ssl ? 'https' : 'http';
+      const host = self.port ? `${self.hostname}:${self.port}` : self.hostname;
+      return `${protocol}://${host}${self.webPathname || ''}`;
     },
     get visibleTorrentColumns() {
       return self.torrentColumns.filter(column => column.display);

@@ -6,9 +6,13 @@ async function downloadFileFromTab(url, tabId, frameId) {
     throw new ErrorWithCode('Link is not supported', 'LINK_IS_NOT_SUPPORTED');
   }
 
-  await executeScriptPromise(tabId, {
-    file: 'tabUrlFetch.js',
-    frameId: frameId
+  const target = {tabId};
+  if (frameId != null) {
+    target.frameIds = [frameId];
+  }
+  await chrome.scripting.executeScript({
+    target,
+    files: ['tabUrlFetch.js'],
   });
 
   return tabsSendMessage(tabId, {
@@ -34,15 +38,6 @@ async function downloadFileFromTab(url, tabId, frameId) {
     });
   }).then(blob => ({blob}));
 }
-
-const executeScriptPromise = (tabId, options) => {
-  return new Promise((resolve, reject) => {
-    chrome.tabs.executeScript(tabId, options, (results) => {
-      const err = chrome.runtime.lastError;
-      err ? reject(err) : resolve(results);
-    });
-  });
-};
 
 const tabsSendMessage = (tabId, message, options) => {
   return new Promise((resolve, reject) => {

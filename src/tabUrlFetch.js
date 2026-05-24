@@ -1,10 +1,8 @@
-import "whatwg-fetch";
 import arrayBufferToBase64 from "./tools/arrayBufferToBase64";
 import getLogger from "./tools/getLogger";
 import ErrorWithCode from "./tools/errorWithCode";
 import promiseFinally from "./tools/promiseFinally";
-
-const {serializeError} = require('serialize-error');
+import {serializeError} from "serialize-error";
 
 const logger = getLogger('tabUrlFetch');
 

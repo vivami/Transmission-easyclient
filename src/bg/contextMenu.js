@@ -1,10 +1,8 @@
-import "whatwg-fetch";
 import getLogger from "../tools/getLogger";
 import downloadFileFromTab from "../tools/downloadFileFromTab";
-import isFirefox from "../tools/isFirefox";
 import downloadFileFromUrl from "../tools/downloadFileFromUrl";
+import normalizePath from "../tools/normalizePath";
 
-const path = require('path');
 const promiseLimit = require('promise-limit');
 
 const logger = getLogger('ContextMenu');
@@ -13,8 +11,6 @@ const oneThread = promiseLimit(1);
 class ContextMenu {
   constructor(/**Bg*/bg) {
     this.bg = bg;
-
-    this.bindClick();
   }
 
   /**
@@ -24,25 +20,10 @@ class ContextMenu {
     return this.bg.bgStore;
   }
 
-  bindClick() {
-    if (!chrome.contextMenus.onClicked.hasListener(this.handleClick)) {
-      chrome.contextMenus.onClicked.addListener(this.handleClick);
-    }
-  }
-
   onCreateFolder() {
-    if (isFirefox()) {
-      chrome.tabs.create({url: '/options.html#/ctx'});
-      return;
-    }
-
-    const firstFolder = this.bg.bgStore.config.folders[0];
-    const path = prompt(chrome.i18n.getMessage('enterNewDirPath'), firstFolder.path);
-    if (path) {
-      if (!this.bg.bgStore.config.hasFolder(path)) {
-        this.bg.bgStore.config.addFolder(path);
-      }
-    }
+    // No window.prompt in an MV3 service worker; open the options page, which
+    // already provides the folder-management UI (same path Firefox used before).
+    chrome.tabs.create({url: '/options.html#/ctx'});
   }
 
   onSendLink(url, tabId, frameId, directory) {
@@ -186,7 +167,7 @@ function transformFoldersToTree(folders) {
       }
     }
     let normPath = place.split(/[\\/]/).join('/');
-    normPath = path.normalize(normPath);
+    normPath = normalizePath(normPath);
     if (/\/$/.test(normPath)) {
       normPath = normPath.slice(0, -1);
     }

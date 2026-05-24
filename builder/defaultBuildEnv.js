@@ -1,39 +1,33 @@
-const getArgvValue = require('./getArgvValue');
 const path = require('path');
 
-const mode = getArgvValue('--mode') || 'development';
+// BROWSER / MODE are provided via environment variables (set by the npm
+// scripts through cross-env). webpack-cli 5 rejects unknown CLI flags, so we
+// no longer pass --BROWSER on the command line.
+const mode = process.env.MODE || 'development';
+const browser = process.env.BROWSER || 'chrome';
 
 const version = require('../src/manifest').version;
-
-const browser = getArgvValue('--BROWSER') || 'chrome';
 
 let targets;
 if (browser === 'firefox') {
   targets = {
-    firefox: mode === 'development' ? '88' : '88',
+    firefox: '88',
   };
 } else {
   targets = {
-    chrome: mode === 'development' ? '88' : '88',
+    chrome: '88',
   };
 }
 
-let babelEnvOptions;
-if (mode === 'development') {
-  babelEnvOptions = {
-    targets,
-  };
-} else {
-  babelEnvOptions = {
-    targets,
-  };
-}
+const babelEnvOptions = {
+  targets,
+};
 
 global.BUILD_ENV = {
   distName: `transmissionEasyClient-${browser}-${version}`,
   outputPath: path.join(__dirname, `../dist/${browser}`),
   mode,
-  devtool: mode === 'development' ? 'inline-source-map' : 'none',
+  devtool: mode === 'development' ? 'inline-source-map' : false,
   version,
   browser,
   babelEnvOptions,

@@ -1,7 +1,13 @@
 import {observer} from "mobx-react";
 import {autorun} from "mobx";
 import React from "react";
-import {curveBasis, easeQuadOut, line, scaleLinear, select, transition} from "d3";
+import {select} from "d3-selection";
+import {scaleLinear} from "d3-scale";
+import {line, curveBasis} from "d3-shape";
+// d3-transition augments selection.prototype.transition as a side effect, so it
+// must be imported before `.transition()` is used on a selection below.
+import {transition} from "d3-transition";
+import {easeQuadOut} from "d3-ease";
 import RootStoreCtx from "../tools/RootStoreCtx";
 
 @observer

@@ -1,11 +1,12 @@
+import "../tools/configureMobx";
 import "react-contexify/dist/ReactContexify.min.css";
 import "rc-select/assets/index.css";
 import "../assets/css/stylesheet.less";
 import React from "react";
 import Menu from "../components/Menu";
-import {useObserver} from "mobx-react";
+import {Observer} from "mobx-react";
 import PropTypes from "prop-types";
-import ReactDOM from "react-dom";
+import {createRoot} from "react-dom/client";
 import RootStore from "../stores/RootStore";
 import TorrentListTable from "../components/TorrentListTable";
 import FileListTable from "../components/FileListTable";
@@ -44,7 +45,7 @@ const Index = React.memo(() => {
     });
   }, []);
 
-  return useObserver(() => {
+  return (<Observer>{() => {
     if (['idle', 'pending'].includes(rootStore.state)) {
       return (
         <div className="loading"/>
@@ -90,13 +91,13 @@ const Index = React.memo(() => {
         {goInOptions}
       </>
     );
-  });
+  }}</Observer>);
 });
 
 const Dialogs = React.memo(() => {
   const rootStore = React.useContext(RootStoreCtx);
 
-  return useObserver(() => {
+  return (<Observer>{() => {
     const dialogs = [];
     rootStore.dialogs.forEach((dialog) => {
       switch (dialog.type) {
@@ -144,7 +145,7 @@ const Dialogs = React.memo(() => {
     return (
       dialogs
     );
-  });
+  }}</Observer>);
 });
 
 const SetPopupHeight = React.memo(({height}) => {
@@ -175,9 +176,8 @@ GoInOptions.propTypes = {
 
 const rootStore = window.rootStore = RootStore.create();
 
-ReactDOM.render(
+createRoot(document.getElementById('root')).render(
   <RootStoreCtx.Provider value={rootStore}>
     <Index/>
-  </RootStoreCtx.Provider>,
-  document.getElementById('root')
+  </RootStoreCtx.Provider>
 );
